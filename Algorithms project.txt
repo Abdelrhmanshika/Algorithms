@@ -1,0 +1,174 @@
+package twoo;
+
+import java.util.*;
+
+public class CourierRoute {
+    private Map<String, Location> locations;
+
+    public CourierRoute() {
+        locations = new HashMap<>();
+    }
+
+    public static void main(String[] args) {
+        CourierRoute courierRoute = new CourierRoute();
+        Scanner scanner = new Scanner(System.in);
+        String command = "";
+
+        while (!command.equalsIgnoreCase("exit")) {
+            System.out.println("Enter a command (add, remove, distance, display, exit):");
+            command = scanner.nextLine();
+
+            if (command.equalsIgnoreCase("add")) {
+                System.out.println("Enter the location name:");
+                String name = scanner.nextLine();
+                courierRoute.addLocation(name);
+                System.out.println("Location added!");
+            } else if (command.equalsIgnoreCase("remove")) {
+                System.out.println("Enter the location name:");
+                String name = scanner.nextLine();
+                courierRoute.removeLocation(name);
+            } else if (command.equalsIgnoreCase("distance")) {
+                System.out.println("Enter the from location:");
+                String fromLoc = scanner.nextLine();
+                System.out.println("Enter the to location:");
+                String toLoc = scanner.nextLine();
+                System.out.println("Enter the distance:");
+                int distance = scanner.nextInt();
+                scanner.nextLine(); // Consume newline character
+                courierRoute.setDistance(fromLoc, toLoc, distance);
+            } else if (command.equalsIgnoreCase("display")) {
+                System.out.println("Enter source: ");
+                String src = scanner.nextLine();
+                courierRoute.displayRoute(src);
+            }
+        }
+
+        scanner.close();
+    }
+
+    public void addLocation(String name) {
+        locations.put(name, new Location(name));
+    }
+
+    public void removeLocation(String name) {
+        if (locations.containsKey(name)) {
+            locations.remove(name);
+            for (Location location : locations.values()) {
+                location.removeDistance(name);
+            }
+        } else {
+            System.out.println("Location not found!");
+        }
+    }
+
+    public void setDistance(String fromLoc, String toLoc, int distance) {
+        if (locations.containsKey(fromLoc) && locations.containsKey(toLoc)) {
+            Location fromLocation = locations.get(fromLoc);
+            Location toLocation = locations.get(toLoc);
+            fromLocation.addDistance(toLoc, distance);
+            toLocation.addDistance(fromLoc, distance);
+        } else {
+            System.out.println("Invalid locations!");
+        }
+    }
+
+    //
+    public void displayRoute(String source) {
+        // Perform route optimization here
+        Map<String, Integer> shortestDistances = new HashMap<>();
+        Map<String, String> previousLocations = new HashMap<>();
+        Set<String> unvisitedLocations = new HashSet<>(locations.keySet());
+
+        // Set the distance to the source location as 0
+        shortestDistances.put(source, 0);
+
+        while (!unvisitedLocations.isEmpty()) {
+            String currentLocation = null;
+            int minDistance = Integer.MAX_VALUE;
+
+            // Find the location with the minimum distance from the set of unvisited locations
+            for (String location : unvisitedLocations) {
+                int distance = shortestDistances.getOrDefault(location, Integer.MAX_VALUE);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    currentLocation = location;
+                }
+            }
+
+            if (currentLocation == null) {
+                break; // No path found to remaining unvisited locations
+            }
+
+            unvisitedLocations.remove(currentLocation);
+
+            // Update the distances to neighboring locations
+            Location current = locations.get(currentLocation);
+            for (Map.Entry<String, Integer> entry : current.getDistances().entrySet()) {
+                String neighbor = entry.getKey();
+                int distance = entry.getValue();
+
+                int totalDistance = shortestDistances.getOrDefault(currentLocation, Integer.MAX_VALUE);
+                totalDistance += distance;
+
+                if (totalDistance < shortestDistances.getOrDefault(neighbor, Integer.MAX_VALUE)) {
+                    shortestDistances.put(neighbor, totalDistance);
+                    previousLocations.put(neighbor, currentLocation);
+                }
+            }
+        }
+
+        System.out.println("Optimized courier route from " + source + ":");
+        for (String destination : shortestDistances.keySet()) {
+            if (!destination.equals(source)) {
+                System.out.print("Destination: " + destination);
+                System.out.print(", Distance: " + shortestDistances.get(destination) + " km");
+                System.out.print(", Path: ");
+                printPath(source, destination, previousLocations);
+                System.out.println();
+            }
+        }
+    }
+
+    private void printPath(String source, String destination, Map<String, String> previousLocations) {
+        List<String> path = new ArrayList<>();
+        String current = destination;
+        while (current != null && !current.equals(source)) {
+            path.add(0, current);
+            current = previousLocations.get(current);
+        }
+        path.add(0, source);
+
+        for (int i = 0; i < path.size(); i++) {
+            System.out.print(path.get(i));
+            if (i != path.size() - 1) {
+                System.out.print(" -> ");
+            }
+        }
+    }
+}
+
+class Location {
+    private String name;
+    private Map<String, Integer> distances;
+
+    public Location(String name) {
+        this.name = name;
+        distances = new HashMap<>();
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public Map<String, Integer> getDistances() {
+        return distances;
+    }
+
+    public void addDistance(String location, int distance) {
+        distances.put(location, distance);
+    }
+
+    public void removeDistance(String location) {
+        distances.remove(location);
+    }
+}
